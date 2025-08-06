@@ -1,0 +1,251 @@
+<div class="debugger-history-panel">
+  <h4>Request History ({{ requests|length }})</h4>
+
+  <div class="history-controls">
+    <input
+      type="text"
+      id="searchInput"
+      placeholder="Search path..."
+      class="form-control"
+      onkeyup="filterRequests()"
+    />
+    <div class="filters">
+      <label><input type="checkbox" class="status-filter" value="200" checked /> 200 OK</label>
+      <label><input type="checkbox" class="status-filter" value="404" checked /> 404</label>
+      <label><input type="checkbox" class="status-filter" value="500" checked /> 500</label>
+    </div>
+  </div>
+
+  {% if requests %}
+  <table class="table table-condensed table-striped history-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Time</th>
+        <th>Method</th>
+        <th>Path</th>
+        <th>Status</th>
+        <th>Duration</th>
+        <th>Mongo Queries</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for req in requests %}
+      <tr class="request-row" data-status="{{ req.status }}">
+        <td>{{ req.id }}</td>
+        <td>{{ req.timestamp }}</td>
+        <td>
+          <span class="label label-{% if req.method == 'GET' %}primary{% else %}warning{% endif %}">
+            {{ req.method }}
+          </span>
+        </td>
+        <td class="path-cell">{{ req.path }}</td>
+        <td>
+          <span
+            class="label label-{% if req.status == 200 %}success{% elif req.status >= 400 %}danger{% else %}info{% endif %}"
+          >
+            {{ req.status }}
+          </span>
+        </td>
+        <td>{{ req.duration|round(2) }}ms</td>
+        <td>
+          <span class="badge">{{ req.mongo_queries|length }}</span>
+        </td>
+        <td>
+          <button class="btn btn-xs btn-info" onclick="toggleRequestDetails({{ loop.index }})">
+            切换详情
+          </button>
+        </td>
+      </tr>
+      <tr id="details-{{ loop.index }}" style="display: none">
+        <td colspan="8" class="request-details">
+          <div class="panel panel-default">
+            <div class="panel-body">
+              {% if req.mongo_queries %}
+              <table class="table table-condensed">
+                <thead>
+                  <tr class="table-header">
+                    <th>Collection</th>
+                    <th>Operation</th>
+                    <th>Duration</th>
+                    <th>MongoDB 语句</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for query in req.mongo_queries %}
+                  <tr>
+                    <td>{{ query.collection }}</td>
+                    <td>{{ query.command }}</td>
+                    <td>{{ query.duration|round(2) }}ms</td>
+                    <td><pre>{{ query.sql }}</pre></td>
+                    <td>
+                      <button
+                        class="btn btn-xs btn-default"
+                        onclick="toggleQueryDetails('query-{{ loop.index }}-{{ req.id }}')"
+                      >
+                        切换详情
+                      </button>
+                      <div
+                        id="query-{{ loop.index }}-{{ req.id }}"
+                        style="display: none; margin-top: 10px"
+                      >
+                        <pre>{{ query.details }}</pre>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+              {% else %}
+              <p>No MongoDB queries recorded for this request</p>
+              {% endif %}
+            </div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No request history recorded yet</p>
+  {% endif %}
+</div>
+
+<style>
+  .debugger-history-panel {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    padding: 15px;
+  }
+
+  .history-controls {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+
+  .history-controls .filters {
+    display: flex;
+    gap: 10px;
+  }
+
+  .history-controls input[type='text'] {
+    flex: 1;
+    max-width: 300px;
+  }
+
+  .history-table {
+    font-size: 13px;
+  }
+
+  .request-row:hover {
+    background-color: #f5f9ff !important;
+    cursor: pointer;
+  }
+
+  .request-details {
+    background-color: #f8f9fa;
+    padding: 0 !important;
+  }
+
+  .path-cell {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .label {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 12px;
+  }
+
+  .label-primary {
+    background-color: #337ab7;
+    color: white;
+  }
+  .label-success {
+    background-color: #5cb85c;
+    color: white;
+  }
+  .label-info {
+    background-color: #5bc0de;
+    color: white;
+  }
+  .label-warning {
+    background-color: #f0ad4e;
+    color: white;
+  }
+  .label-danger {
+    background-color: #d9534f;
+    color: white;
+  }
+
+  .badge {
+    display: inline-block;
+    min-width: 10px;
+    padding: 3px 7px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    background-color: #777;
+    border-radius: 10px;
+  }
+
+  .table-header th {
+    text-align: left !important;
+  }
+</style>
+
+<script>
+  function toggleRequestDetails(index) {
+    var detailsRow = document.getElementById(`details-${index}`);
+    if (detailsRow.style.display === 'table-row') {
+      detailsRow.style.display = 'none';
+    } else {
+      detailsRow.style.display = 'table-row';
+    }
+  }
+
+  function hideRequestDetails(index) {
+    document.getElementById(`details-${index}`).style.display = 'none';
+  }
+
+  function toggleQueryDetails(id) {
+    var el = document.getElementById(id);
+    if (el.style.display === 'none') {
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  function filterRequests() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const statusFilters = Array.from(document.querySelectorAll('.status-filter:checked')).map(
+      (el) => el.value,
+    );
+
+    const rows = document.querySelectorAll('.request-row');
+
+    rows.forEach((row) => {
+      const path = row.querySelector('.path-cell').textContent.toLowerCase();
+      const status = row.getAttribute('data-status');
+
+      const matchesSearch = path.includes(search);
+      const matchesStatus = statusFilters.includes(status);
+
+      if (matchesSearch && matchesStatus) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+</script>

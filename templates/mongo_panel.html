@@ -1,0 +1,53 @@
+<div class="debugger-mongo-panel">
+  <h4>MongoDB Queries ({{ queries|length }} queries / {{ total_duration|round(2) }}ms)</h4>
+  {% if queries %}
+  <h5></h5>
+  <table class="table table-condensed table-striped">
+    <thead>
+      <tr>
+        <th>Collection</th>
+        <th>Operation</th>
+        <th>Duration</th>
+        <th>关联请求路径</th>
+        <th>MongoDB 语句</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for query in queries %}
+      <tr>
+        <td>{{ query.collection }}</td>
+        <td>{{ query.command }}</td>
+        <td>{{ query.duration|round(2) }}ms</td>
+        <td>{{ query.path }}</td>
+        <td><pre>{{ query.sql }}</pre></td>
+        <td>
+          <button
+            class="btn btn-xs btn-default"
+            onclick="toggleDetails('mongo-details-{{ loop.index }}')"
+          >
+            切换详情
+          </button>
+          <div id="mongo-details-{{ loop.index }}" style="display: none; word-break: break-all">
+            <pre>{{ query.details }}</pre>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No MongoDB queries recorded</p>
+  {% endif %}
+</div>
+
+<script>
+  function toggleDetails(id) {
+    var el = document.getElementById(id);
+    if (el.style.display === 'none') {
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+</script>
